@@ -4,7 +4,7 @@ Classical information retrieval metrics such as Mean Reciprocal Rank (MRR)
 evaluate only the position of the *first* relevant item, ignoring both
 deeper relevant results and the structural quality of the retrieved set within
 the corpus graph.  We introduce *MRR-Top0*, a novel ranking metric that
-extends MRR to the entire top-$k$ result list by weighting each relevant
+extends MRR to the entire top-$$k$$ result list by weighting each relevant
 item's reciprocal rank with a *topology factor* $$T_{q,i}$$.  This factor
 combines three graph signals computed on the corpus feature graph:
 *Personalized PageRank* (random-walk affinity from the query anchor),
