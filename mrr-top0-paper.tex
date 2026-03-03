@@ -86,7 +86,10 @@ purely on rank positions and relevance labels.  They are \emph{semantics-blind}
 and \emph{topology-blind}: they cannot distinguish a top-$k$ set that forms a
 tight, well-connected cluster on the corpus manifold from one that is
 topologically scattered, even when both sets contain the same relevant items
-at the same ranks.
+at the same ranks. These results in a low quality of tails and a low context-awareness
+of the results, this is particularly critical in vector space where semantic relevance of
+items is a key factor, like Retrieval Augmented Generation (RAG) pipelines and any
+other application related to Large Language Models (LLMs). 
 
 MRR in particular suffers from a narrow focus:
 \begin{equation}

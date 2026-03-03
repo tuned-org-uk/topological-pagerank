@@ -6,24 +6,24 @@
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction and Context of Applications}{1}{section.1}\protected@file@percent }
 \newlabel{sec:intro}{{1}{1}{Introduction and Context of Applications}{section.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Limitations of Classical Retrieval Metrics}{1}{subsection.1.1}\protected@file@percent }
-\newlabel{eq:mrr}{{1}{1}{Limitations of Classical Retrieval Metrics}{equation.1}{}}
 \citation{weaviate2024metrics}
 \citation{arrowspace2025}
+\newlabel{eq:mrr}{{1}{2}{Limitations of Classical Retrieval Metrics}{equation.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {1.2}The Case for Topology-Aware Evaluation}{2}{subsection.1.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {1.3}Target Application Domains}{2}{subsection.1.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {2}Formal Definition and Components}{2}{section.2}\protected@file@percent }
-\newlabel{sec:definition}{{2}{2}{Formal Definition and Components}{section.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}The MRR-Top0 Formula}{2}{subsection.2.1}\protected@file@percent }
-\citation{stanford_ppr}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Formal Definition and Components}{3}{section.2}\protected@file@percent }
+\newlabel{sec:definition}{{2}{3}{Formal Definition and Components}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}The MRR-Top0 Formula}{3}{subsection.2.1}\protected@file@percent }
 \newlabel{eq:mrrtop0}{{2}{3}{MRR-Top0}{equation.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Explanation of Every Member}{3}{subsection.2.2}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Members of the MRR-Top0 equation.}}{3}{table.1}\protected@file@percent }
 \newlabel{tab:members}{{1}{3}{Members of the MRR-Top0 equation}{table.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}The Topology Factor}{3}{subsection.2.3}\protected@file@percent }
 \newlabel{sec:topofactor}{{2.3}{3}{The Topology Factor}{subsection.2.3}{}}
-\newlabel{eq:topofactor}{{3}{3}{Topology Factor}{equation.3}{}}
+\citation{stanford_ppr}
 \citation{conductance_modularity}
 \citation{conductance_modularity}
+\newlabel{eq:topofactor}{{3}{4}{Topology Factor}{equation.3}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.1}Personalized PageRank: $\mathrm  {PPR}(q, i)$}{4}{subsubsection.2.3.1}\protected@file@percent }
 \newlabel{eq:ppr}{{4}{4}{Personalized PageRank: $\mathrm {PPR}(q, i)$}{equation.4}{}}
 \@writefile{toc}{\contentsline {paragraph}{Role in $T_{q,i}$.}{4}{section*.1}\protected@file@percent }
@@ -32,18 +32,18 @@
 \@writefile{toc}{\contentsline {paragraph}{Role in $T_{q,i}$.}{4}{section*.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.3}Modularity Gain: $\mathcal  {Q}(S_{q,1:i})$}{4}{subsubsection.2.3.3}\protected@file@percent }
 \newlabel{eq:modularity}{{6}{4}{Modularity Gain: $\mathcal {Q}(S_{q,1:i})$}{equation.6}{}}
-\@writefile{toc}{\contentsline {paragraph}{Role in $T_{q,i}$.}{4}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Role in $T_{q,i}$.}{5}{section*.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.4}Weight Parameters: $\alpha _1, \alpha _2, \alpha _3$}{5}{subsubsection.2.3.4}\protected@file@percent }
 \newlabel{eq:weights}{{7}{5}{Weight Parameters: $\alpha _1, \alpha _2, \alpha _3$}{equation.7}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Practical Guidance}{5}{subsection.2.4}\protected@file@percent }
 \newlabel{sec:practical}{{2.4}{5}{Practical Guidance}{subsection.2.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Key Properties and Qualities}{5}{subsection.2.5}\protected@file@percent }
 \newlabel{sec:properties}{{2.5}{5}{Key Properties and Qualities}{subsection.2.5}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Comparison of MRR-Top0 with standard metrics.}}{5}{table.2}\protected@file@percent }
-\newlabel{tab:comparison}{{2}{5}{Comparison of MRR-Top0 with standard metrics}{table.2}{}}
 \@writefile{toc}{\contentsline {paragraph}{1.\ Multi-rank evaluation.}{5}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{2.\ Topology-awareness.}{5}{section*.5}\protected@file@percent }
 \citation{stanford_ppr}
-\@writefile{toc}{\contentsline {paragraph}{2.\ Topology-awareness.}{6}{section*.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Comparison of MRR-Top0 with standard metrics.}}{6}{table.2}\protected@file@percent }
+\newlabel{tab:comparison}{{2}{6}{Comparison of MRR-Top0 with standard metrics}{table.2}{}}
 \@writefile{toc}{\contentsline {paragraph}{3.\ Label-agnostic operation.}{6}{section*.6}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{4.\ Harmonic mean interpretation.}{6}{section*.7}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{5.\ Incremental subgraph quality.}{6}{section*.8}\protected@file@percent }
