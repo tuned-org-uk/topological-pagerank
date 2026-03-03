@@ -1,0 +1,632 @@
+\documentclass[11pt,a4paper]{article}
+
+% ─── Packages ───────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=green!50!black,
+    urlcolor=blue!60!black
+}
+
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+
+% ─── Title ──────────────────────────────────────────────────────────
+\title{%
+	\textbf{MRR-Top0: A Topology-Aware Extension\\of Mean Reciprocal Rank
+		for Semantic-Sensitive Retrieval Evaluation}
+}
+\author{Lorenzo Moriondo\\
+	\small Independent Researcher - tuned.org.uk\\
+	\small ORCID: 0000-0002-8804-2963}
+
+\date{6 March 2026}
+
+% ════════════════════════════════════════════════════════════════════
+\begin{document}
+\maketitle
+
+% ─── Abstract ───────────────────────────────────────────────────────
+\begin{abstract}
+Classical information retrieval metrics such as Mean Reciprocal Rank (MRR)
+evaluate only the position of the \emph{first} relevant item, ignoring both
+deeper relevant results and the structural quality of the retrieved set within
+the corpus graph.  We introduce \textbf{MRR-Top0}, a novel ranking metric that
+extends MRR to the entire top-$k$ result list by weighting each relevant
+item's reciprocal rank with a \emph{topology factor} $T_{q,i}$.  This factor
+combines three graph signals computed on the corpus feature graph:
+\emph{Personalized PageRank} (random-walk affinity from the query anchor),
+a \emph{conductance penalty} (subgraph cohesion), and a \emph{modularity gain}
+(community alignment).  The resulting score evaluates both relevance order
+and structural coherence in a single, bounded, label-agnostic quantity.
+MRR-Top0 is applicable to any retrieval system operating over an
+embedding space equipped with a graph Laplacian---including spectral
+vector databases, RAG pipelines, and topology-aware search engines---and
+provides a computationally cheap proxy for assessing whether a ranking
+reflects the learned manifold structure of the dataset, not merely
+geometric proximity.  We present the formal definition, explain every
+constituent, discuss key properties and practical guidance, and situate
+the metric within the broader landscape of graph-aware retrieval
+evaluation.
+\end{abstract}
+
+\vspace{1em}
+\noindent\textbf{Keywords:}
+information retrieval, evaluation metrics, graph topology, Personalized
+PageRank, conductance, modularity, spectral vector search, RAG, MRR
+
+% ════════════════════════════════════════════════════════════════════
+\section{Introduction and Context of Applications}
+\label{sec:intro}
+
+% ── 1.1 Limitations of classical metrics ────────────────────────────
+\subsection{Limitations of Classical Retrieval Metrics}
+
+Modern AI systems, particularly Retrieval-Augmented Generation (RAG) pipelines,
+depend critically on the quality of their retrieval stage.  A flawed retrieval
+step propagates errors downstream; as noted in recent enterprise analyses,
+``pure RAG is not really giving the optimal results that were expected''
+\cite{bruckhaus2024rag,ibm2025rag}.  The metrics traditionally used to
+evaluate retrieval---Recall@$k$, Precision@$k$, MRR, NDCG@$k$---operate
+purely on rank positions and relevance labels.  They are \emph{geometry-blind}
+and \emph{topology-blind}: they cannot distinguish a top-$k$ set that forms a
+tight, well-connected cluster on the corpus manifold from one that is
+topologically scattered, even when both sets contain the same relevant items
+at the same ranks.
+
+MRR in particular suffers from a narrow focus:
+\begin{equation}
+  \mathrm{MRR} = \frac{1}{|Q|} \sum_{q=1}^{|Q|}
+    \frac{1}{\mathrm{rank}(q, i^{*}_q)}
+  \label{eq:mrr}
+\end{equation}
+where $i^{*}_q$ is the \emph{first} relevant item for query $q$.  This
+ignores all relevant items beyond rank 1 and says nothing about how the
+result set relates to the graph structure of the dataset.
+
+NDCG@$k$ partially addresses the multi-item issue via graded relevance and
+logarithmic discounting, but it still requires explicit relevance labels,
+is sensitive to shallow or incomplete pooling judgments, and has no notion
+of graph topology, community structure, or manifold coherence
+\cite{weaviate2024metrics}.
+
+% ── 1.2 The need for topology-awareness ─────────────────────────────
+\subsection{The Case for Topology-Aware Evaluation}
+
+When a vector database is backed by a graph Laplacian---as in spectral
+search systems such as ArrowSpace \cite{arrowspace2025}---the corpus
+carries rich structural information: communities, random-walk affinities,
+conductance boundaries, and spectral signatures.  A retrieval metric that
+ignores this structure leaves significant diagnostic power on the table.
+
+Concretely, topology-awareness enables the following:
+\begin{itemize}[nosep]
+  \item \textbf{Drift detection:} A result set with high geometric
+    similarity but low subgraph cohesion (high conductance) signals that
+    the query is being answered from a topologically unstable region---a
+    leading indicator of context drift and downstream hallucination.
+  \item \textbf{Diversity assessment:} Modularity gain quantifies whether
+    retrieved items span distinct communities or cluster into a single
+    mode, supporting diversity-aware ranking.
+  \item \textbf{Label-free evaluation:} In many production settings,
+    graded relevance labels are unavailable or prohibitively expensive
+    to maintain.  Graph topology provides a complementary,
+    label-agnostic signal.
+  \item \textbf{RAG tail stability:} The tail of the top-$k$ list is
+    often where hallucinations originate.  A metric that scores the
+    entire list, weighted by structural quality, directly addresses
+    this concern.
+\end{itemize}
+
+% ── 1.3 Application domains ─────────────────────────────────────────
+\subsection{Target Application Domains}
+
+MRR-Top0 is designed for any system where retrieval quality interacts with
+graph structure.  Primary application domains include:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Spectral vector databases} (e.g., ArrowSpace, Genefold):
+    indices that store a graph Laplacian alongside embeddings and use
+    spectral scores ($\lambda$-mode, Rayleigh quotients) for similarity.
+  \item \textbf{RAG pipelines:} evaluating whether the context window fed
+    to an LLM is structurally coherent, not just geometrically proximate.
+  \item \textbf{Knowledge-graph-augmented search:} systems that overlay
+    a knowledge graph on an embedding space and route queries through
+    graph neighborhoods.
+  \item \textbf{MLOps and dataset monitoring:} detecting distributional
+    shift by tracking how MRR-Top0 evolves over time for a fixed query
+    set---a drop in topology-factor scores signals that the manifold
+    structure has changed.
+  \item \textbf{Mechanistic interpretability:} scoring feature circuits
+    in sparse autoencoders (SAEs) by treating SAE decoder weights as
+    items in a feature graph and using MRR-Top0 to evaluate retrieval
+    of structurally coherent feature neighborhoods.
+\end{enumerate}
+
+
+% ════════════════════════════════════════════════════════════════════
+\section{Formal Definition and Components}
+\label{sec:definition}
+
+% ── 2.1 The MRR-Top0 formula ────────────────────────────────────────
+\subsection{The MRR-Top0 Formula}
+
+\begin{definition}[MRR-Top0]
+Let $Q$ be a set of queries.  For each query $q \in Q$, let
+$\mathrm{Rel}(q) \subseteq \{1, \ldots, k\}$ be the set of relevant items
+in the top-$k$ result list.  For each relevant item $i \in \mathrm{Rel}(q)$,
+let $\mathrm{rank}(q,i)$ denote its rank position and $T_{q,i}$ its
+\emph{topology factor}.  Then:
+\begin{equation}
+  \boxed{
+    \mathrm{MRR\text{-}Top0}
+    = \frac{1}{|Q|}
+      \sum_{q=1}^{|Q|}
+      \sum_{i \in \mathrm{Rel}(q)}
+      \frac{T_{q,i}}{\mathrm{rank}(q,i)}
+  }
+  \label{eq:mrrtop0}
+\end{equation}
+\end{definition}
+
+% ── 2.2 Members of the equation ─────────────────────────────────────
+\subsection{Explanation of Every Member}
+
+Table~\ref{tab:members} provides a complete reference for each symbol in
+Equation~\eqref{eq:mrrtop0}.
+
+\begin{table}[ht]
+\centering
+\caption{Members of the MRR-Top0 equation.}
+\label{tab:members}
+\begin{tabular}{@{}clp{8.2cm}@{}}
+\toprule
+\textbf{Symbol} & \textbf{Name} & \textbf{Description} \\
+\midrule
+$|Q|$ & Query set size &
+  The total number of evaluation queries.  The outer $\frac{1}{|Q|}$ averages
+  the per-query scores, exactly as in standard MRR. \\[6pt]
+%
+$q$ & Query index &
+  An index running from $1$ to $|Q|$, identifying each individual query
+  in the evaluation set. \\[6pt]
+%
+$\mathrm{Rel}(q)$ & Relevant item set &
+  The set of items judged relevant (or, in the label-agnostic regime,
+  identified as relevant by the graph topology) for query $q$ within the
+  top-$k$ cutoff.  Unlike standard MRR which considers only the first
+  relevant item, MRR-Top0 sums over \emph{all} relevant items in
+  $\mathrm{Rel}(q)$. \\[6pt]
+%
+$i$ & Item index &
+  An index identifying a specific relevant item within the result list
+  for query $q$. \\[6pt]
+%
+$\mathrm{rank}(q,i)$ & Rank position &
+  The integer position (1-indexed) at which item $i$ appears in the
+  ranked result list for query $q$.  The reciprocal
+  $\frac{1}{\mathrm{rank}(q,i)}$ gives higher credit to items ranked
+  higher---rank 1 contributes $1.0$, rank 5 contributes $0.2$, etc. \\[6pt]
+%
+$T_{q,i}$ & Topology factor &
+  A bounded scalar $T_{q,i} \in [0,1]$ (practically $\approx [0.2, 1.0]$
+  with well-tuned weights) that modulates the reciprocal-rank contribution
+  of item $i$ based on its structural quality within the result subgraph.
+  Defined in \S\ref{sec:topofactor}.  This is the core novelty of
+  MRR-Top0. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ── 2.3 The topology factor ─────────────────────────────────────────
+\subsection{The Topology Factor}
+\label{sec:topofactor}
+
+The topology factor $T_{q,i}$ combines three graph signals to reward items
+that are structurally well-positioned relative to the query and the
+accumulated result set:
+
+\begin{definition}[Topology Factor]
+\begin{equation}
+  T_{q,i}
+  = \alpha_1 \cdot \mathrm{PPR}(q, i)
+  + \alpha_2 \cdot \bigl(1 - \phi(S_{q,1:i})\bigr)
+  + \alpha_3 \cdot \mathcal{Q}(S_{q,1:i})
+  \label{eq:topofactor}
+\end{equation}
+where $\alpha_1 + \alpha_2 + \alpha_3 = 1$ and $\alpha_j > 0$.
+\end{definition}
+
+Each component is explained in detail below.
+
+\subsubsection{Personalized PageRank: $\mathrm{PPR}(q, i)$}
+
+Personalized PageRank (PPR) \cite{stanford_ppr} computes the stationary
+distribution of a random walk that, at each step, either follows an outgoing
+edge with probability $d$ (the damping factor, typically $0.85$) or
+teleports back to the query node $q$ with probability $1-d$.  The resulting
+score $\mathrm{PPR}(q, i)$ measures the \emph{random-walk affinity} from
+the query anchor $q$ to item $i$ on the corpus feature graph:
+
+\begin{equation}
+  \mathbf{p}_q = (1 - d) \, \mathbf{e}_q + d \, \mathbf{M}^{\!\top} \mathbf{p}_q
+  \label{eq:ppr}
+\end{equation}
+
+where $\mathbf{e}_q$ is a one-hot vector at the query node and $\mathbf{M}$
+is the column-stochastic transition matrix of the feature graph.  The $i$-th
+entry of $\mathbf{p}_q$ gives $\mathrm{PPR}(q, i)$.
+
+\paragraph{Role in $T_{q,i}$.}
+PPR ensures that the topology signal is \emph{query-anchored}: items that are
+geometrically similar to $q$ (high cosine) but poorly connected via the
+feature graph (low PPR) receive a reduced topology factor.  This prevents
+``shortcuts'' where a distant item happens to match the query embedding
+but resides in a different topological community.
+
+\subsubsection{Conductance Penalty: $1 - \phi(S_{q,1:i})$}
+
+Let $S_{q,1:i}$ denote the partial result set comprising the top $i$ items
+for query $q$.  The \emph{conductance} of this set is:
+
+\begin{equation}
+  \phi(S_{q,1:i})
+  = \frac{|\partial(S_{q,1:i})|}
+         {\min\bigl(\mathrm{vol}(S_{q,1:i}),\;
+                     \mathrm{vol}(V \setminus S_{q,1:i})\bigr)}
+  \label{eq:conductance}
+\end{equation}
+
+where $\partial(S)$ is the set of edges crossing the boundary of $S$,
+and $\mathrm{vol}(S) = \sum_{v \in S} \deg(v)$ is the volume (sum of
+degrees) of $S$ \cite{conductance_modularity}.
+
+\paragraph{Role in $T_{q,i}$.}
+Low conductance ($\phi \approx 0$) indicates a tightly connected subgraph
+with few boundary edges---a cohesive, topologically stable result set.
+High conductance ($\phi \to 1$) signals a loose, scattered subgraph.  The
+term $1 - \phi$ therefore \emph{rewards} cohesion and \emph{penalizes}
+topological scatter.  Crucially, this is evaluated \emph{incrementally}:
+$\phi(S_{q,1:i})$ is the conductance of the result set accumulated up to
+rank $i$, so the topology factor captures how each new item affects subgraph
+quality.
+
+\subsubsection{Modularity Gain: $\mathcal{Q}(S_{q,1:i})$}
+
+Modularity measures the fraction of intra-community edges in the result
+subgraph compared to a random null model:
+
+\begin{equation}
+  \mathcal{Q}(S_{q,1:i})
+  = \frac{1}{2m} \sum_{u,v \in S_{q,1:i}}
+    \left[ A_{uv} - \frac{\deg(u) \deg(v)}{2m} \right]
+  \label{eq:modularity}
+\end{equation}
+
+where $A$ is the adjacency matrix of the corpus graph and
+$m = \frac{1}{2}\sum_{uv} A_{uv}$ is the total number of edges
+\cite{conductance_modularity}.
+
+\paragraph{Role in $T_{q,i}$.}
+High modularity indicates that the result set respects the intrinsic
+community structure of the corpus---items belong to the same or closely
+related clusters.  Low modularity (or negative values) indicates that
+results are drawn from across unrelated communities, suggesting potential
+topical incoherence.
+
+\subsubsection{Weight Parameters: $\alpha_1, \alpha_2, \alpha_3$}
+
+The weights $\alpha_1, \alpha_2, \alpha_3$ control the relative influence
+of each graph signal and must sum to 1.  Recommended defaults for
+query-centric retrieval are:
+
+\begin{equation}
+  \alpha_1 = 0.5, \quad \alpha_2 = 0.3, \quad \alpha_3 = 0.2
+  \label{eq:weights}
+\end{equation}
+
+This weighting prioritizes query-anchored affinity (PPR) while giving
+secondary importance to subgraph cohesion and tertiary importance to
+community alignment.  The weights are tunable per task: for diversity-heavy
+applications, increasing $\alpha_3$ rewards cross-community coverage.
+
+% ── 2.4 Practical guidance ──────────────────────────────────────────
+\subsection{Practical Guidance}
+\label{sec:practical}
+
+\begin{enumerate}[nosep]
+  \item \textbf{Set $k$ cutoff.}  Limit $\mathrm{Rel}(q)$ to top-$k$
+    (e.g., $k=10$) to match user attention and reduce computational cost
+    of topology metrics.
+  \item \textbf{Normalize $T_{q,i}$.}  Scale PPR, conductance, and
+    modularity to $[0,1]$ so the topology factor is bounded and
+    interpretable.  Typical values: $T_{q,i} \in [0.2, 1.0]$.
+  \item \textbf{Graph construction.}  Build a $k$-NN or radius graph on
+    corpus embeddings (e.g., $k=15$, cosine similarity) and precompute
+    community structure.  Update topology factors incrementally as
+    results are ranked.
+  \item \textbf{Comparison baseline.}  Report both
+    $\mathrm{MRR}$ (geometry-only) and $\mathrm{MRR\text{-}Top0}$
+    (geometry + topology) to quantify the added value of structural
+    signals.  Improvements of 5--15\% in MRR-Top0 indicate meaningful
+    topology contribution.
+\end{enumerate}
+
+% ── 2.5 Key properties ─────────────────────────────────────────────
+\subsection{Key Properties and Qualities}
+\label{sec:properties}
+
+\begin{proposition}[Generalization of MRR]
+When $T_{q,i} = 1$ for all $i$ and only the first relevant item is
+considered, MRR-Top0 reduces to standard MRR (Equation~\ref{eq:mrr}).
+\end{proposition}
+
+\begin{proof}
+Setting $T_{q,i} = 1$ and $|\mathrm{Rel}(q)| = 1$ with $\mathrm{Rel}(q) = \{i^{*}_q\}$, Equation~\eqref{eq:mrrtop0} becomes:
+\[
+  \mathrm{MRR\text{-}Top0}
+  = \frac{1}{|Q|} \sum_{q=1}^{|Q|}
+    \frac{1}{\mathrm{rank}(q, i^{*}_q)}
+  = \mathrm{MRR}.
+\]
+\end{proof}
+
+\noindent The following properties make MRR-Top0 uniquely suited for
+modern retrieval evaluation:
+
+\begin{table}[ht]
+\centering
+\caption{Comparison of MRR-Top0 with standard metrics.}
+\label{tab:comparison}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Property} & \textbf{MRR} & \textbf{NDCG@$k$} &
+  \textbf{Recall@$k$} & \textbf{MRR-Top0} \\
+\midrule
+Evaluates full top-$k$      & \texttimes & \checkmark & \checkmark & \checkmark \\
+Rank-aware                   & \checkmark & \checkmark & \texttimes & \checkmark \\
+Topology-aware               & \texttimes & \texttimes & \texttimes & \checkmark \\
+Label-agnostic mode          & \texttimes & \texttimes & \texttimes & \checkmark \\
+Bounded output               & $[0,1]$   & $[0,1]$   & $[0,1]$   & $[0,H_k]$  \\
+Penalizes scattered results  & \texttimes & \texttimes & \texttimes & \checkmark \\
+Community alignment          & \texttimes & \texttimes & \texttimes & \checkmark \\
+Robust to incomplete labels  & N/A       & \texttimes & \texttimes & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{1.\ Multi-rank evaluation.}
+MRR-Top0 aggregates contributions from \emph{all} relevant items in the
+top-$k$, not just the first hit.  This addresses MRR's well-known
+limitation of ignoring deeper relevant results, which is particularly
+problematic in RAG systems where the LLM consumes the entire context
+window.
+
+\paragraph{2.\ Topology-awareness.}
+By weighting reciprocal ranks with PPR, conductance, and modularity,
+MRR-Top0 scores how well the ranking reflects both relevance and graph
+structure.  This avoids sole reliance on geometric similarity, which is
+known to produce topologically scattered result sets under domain shift.
+
+\paragraph{3.\ Label-agnostic operation.}
+MRR-Top0 can operate without explicit graded relevance judgments.  When
+labels are unavailable, $\mathrm{Rel}(q)$ can be defined via graph-based
+criteria (e.g., items within a PPR threshold of $q$), and the topology
+factor provides the quality signal.  This makes the metric robust to the
+pooling bias and shallow judgment problems that degrade NDCG reliability.
+
+\paragraph{4.\ Harmonic mean interpretation.}
+The reciprocal of MRR-Top0 corresponds to a topology-weighted harmonic
+mean of relevant ranks, analogous to MRR's harmonic mean of first-hit
+positions.  This preserves the intuitive interpretation: a score close to
+$1.0$ means relevant, structurally well-positioned items appear near the
+top of the list.
+
+\paragraph{5.\ Incremental subgraph quality.}
+The conductance and modularity components are evaluated on the
+\emph{partial} result set $S_{q,1:i}$, not just on individual items.
+This means MRR-Top0 captures how each successive item affects the
+overall structural quality of the retrieved set---a feature no existing
+single-number IR metric provides.
+
+\paragraph{6.\ Computationally efficient.}
+PPR can be approximated in $O(1/\epsilon)$ time per query via
+bidirectional estimators \cite{stanford_ppr}.  Conductance and modularity
+are computed incrementally on the growing subgraph.  The overhead relative
+to standard MRR is modest, making MRR-Top0 practical for production
+benchmarking.
+
+% ── 2.6 Worked example ─────────────────────────────────────────────
+\subsection{Worked Example}
+
+Suppose query $q$ retrieves results at ranks 1, 3, 5 with relevance
+judgments $\{1, 3, 5\} = \mathrm{Rel}(q)$ and topology factors
+$T_{q,1} = 0.9$, $T_{q,3} = 0.7$, $T_{q,5} = 0.5$:
+
+\begin{align}
+  \mathrm{MRR\text{-}Top0}(q)
+  &= \frac{0.9}{1} + \frac{0.7}{3} + \frac{0.5}{5} \nonumber \\
+  &= 0.9 + 0.233 + 0.1 \nonumber \\
+  &= 1.233 \label{eq:example}
+\end{align}
+
+Standard MRR would give $\frac{1}{1} = 1.0$, ignoring ranks 3 and 5
+and all topology.  MRR-Top0's higher per-query score reflects credit for
+(a) multiple relevant items beyond the first hit and (b) their structural
+quality as measured by the topology factor.  When averaged over $|Q|$
+queries, the metric remains interpretable as a mean topology-weighted
+reciprocal rank.
+
+% ── 2.7 Implementation ─────────────────────────────────────────────
+\subsection{Reference Implementation}
+
+\begin{algorithm}[H]
+\caption{MRR-Top0 for a single query}
+\label{alg:mrrtop0}
+\begin{algorithmic}[1]
+\Require Retrieved list $R$, relevance dict, topology factors $T$, cutoff $k$
+\Ensure MRR-Top0 score for query $q$
+\State $\text{score} \gets 0.0$
+\For{$(i, \text{rank})$ in $R$}
+  \If{$\text{rank} > k$} \textbf{break} \EndIf
+  \If{$\text{relevance}[i] > 0$}
+    \State $\text{score} \gets \text{score} + T[i] \;/\; \text{rank}$
+  \EndIf
+\EndFor
+\State \Return score
+\end{algorithmic}
+\end{algorithm}
+
+The full MRR-Top0 over a query set is the mean of per-query scores.  A
+Python reference implementation is available in the ArrowSpace test suite
+(\href{https://github.com/tuned-org-uk/pyarrowspace/blob/c3d9a40e00a04fa05660f76eb982793e2e80e773/tests/test_15_CVE_pagerank.py}{test\_15\_CVE\_pagerank.py}).
+
+\subsection{MRR-Top0 and Epiplexity.}
+Topological PageRank and epiplexity share a common mathematical substrate: 
+the graph Laplacian and its spectral decomposition. Classical PageRank 
+computes the stationary distribution of a random walk on a graph, and 
+Chung~\cite{chung2010pagerank} established that PageRank vectors are 
+expressible through the combinatorial Laplacian $L = D - A$ and its 
+discrete Green's function, with the Fiedler eigenvalue $\lambda_1$ 
+governing the rate of convergence of the walk. Shur et 
+al.~\cite{shur2023pagerank} further proved that log-PageRank embeddings 
+converge to the Laplacian eigenvectors for regular graphs, making 
+personalised PageRank a locally computable proxy for spectral position. 
+\textbf{Epiplexity~\cite{finzi2026epiplexity}, defined as the structural 
+information extractable by a computationally bounded observer}, measures 
+the area under the loss curve above the final loss---equivalently, the 
+information in the program that minimises the time-bounded minimum 
+description length. Items with high structural content relative to the 
+learned manifold induce richer internal representations (more reusable 
+circuits), and this property correlates with out-of-distribution 
+generalisation. The connection is direct: personalised PageRank 
+$\mathrm{PPR}(q, i)$ in MRR-Top0's topology factor $T_{q,i}$ measures 
+random-walk affinity on the same graph whose Laplacian spectrum encodes 
+the structural complexity that epiplexity formalises. High-PPR items are 
+those reachable via smooth, low-frequency paths on the manifold---the 
+same regime where epiplexity predicts high structural information 
+content---while low-PPR items occupy spectrally rough, high-frequency 
+regions where the observer extracts less transferable structure. In this 
+sense, MRR-Top0's topology-weighted reciprocal rank can be interpreted 
+as an \emph{epiplexity-aware} retrieval score: it rewards not merely 
+geometric proximity but manifold-consistent structural alignment.
+
+ArrowSpace makes the synergy between MRR-Top0 and epiplexity 
+operationally realisable by providing the $\lambda_i$ (Rayleigh 
+quotient of each item against $L = \mathrm{Laplacian}(C^\top)$, the 
+feature-space graph Laplacian over centroids) as a precomputed, $O(1)$-
+per-item scalar. Even if the epiplexity interpretation of $\lambda$ is 
+approximate, this value serves as a computationally cheap proxy for 
+``how much an item deviates from learned structure,'' which is 
+operationally useful for active learning and OOD detection in retrieval 
+systems. In practice, the personalised PageRank component of 
+$T_{q,i}$ can be replaced or augmented by spectral proximity 
+$\exp(-|\lambda_q - \lambda_i|/\sigma_\lambda)$, yielding a 
+fully spectral MRR-Top0 variant that requires no explicit random-walk 
+computation---only the already-indexed $\lambda$ values and the 
+$\tau$-mode search that ArrowSpace provides at query time.
+
+
+\newpage
+% ════════════════════════════════════════════════════════════════════
+\section*{Acknowledgments}
+
+MRR-Top0 was developed as part of the ArrowSpace spectral vector database
+project \cite{Moriondo2025ArrowSpace} (\texttt{cargo add arrowspace}, \texttt{pip install arrowspace}).
+The metric design builds on the manifold invariant
+$\mathbf{L} = \mathrm{Laplacian}(\mathrm{Transpose}(\mathbf{C}))$, where
+$\mathbf{C}$ is the centroid matrix, ensuring the topology is computed in
+\emph{feature-space} rather than items-space.  The epiplexity
+interpretation of the Rayleigh quotient $\lambda_i$ as a spectral deviation
+proxy provides the operational grounding: even when approximate, $\lambda$
+offers a computationally cheap signal for how much an item deviates from
+learned structure, which is operationally useful for active learning and
+OOD detection in RAG systems. A complete script is available in \href{https://github.com/tuned-org-uk/pyarrowspace/blob/c3d9a40e00a04fa05660f76eb982793e2e80e773/tests/test_15_CVE_pagerank.py}{this repository}.
+
+ I am grateful to my GitHub Sponsors for their support, which materially enables me to continue this research as an independent researcher. If you would like to support ongoing work on ArrowSpace and related research, please consider sponsoring me at \href{https://github.com/sponsors/tuned-org-uk}{my sponsors page}. Your sponsorship helps fund compute time, open-source maintenance, and the time required to
+develop, test, and communicate these ideas in a transparent and reproducible way.
+
+% ════════════════════════════════════════════════════════════════════
+\begin{thebibliography}{20}
+
+\bibitem{bruckhaus2024rag}
+T.~Bruckhaus, ``RAG Does Not Work for Enterprises,''
+\emph{arXiv:2406.04369}, 2024.
+
+\bibitem{ibm2025rag}
+IBM, ``RAG Problems Persist. Here Are Five Ways to Fix Them,''
+\emph{IBM Think}, 2025.
+
+\bibitem{weaviate2024metrics}
+Weaviate, ``Evaluation Metrics for Search and Recommendation Systems,''
+Weaviate Blog, 2024.
+
+\bibitem{arrowspace2025}
+tuned.org.uk, ``Pathway for Vector DB: Spectral Indexing with Graph
+Laplacians,'' \emph{TechRxiv}, October 2025.
+
+\bibitem{stanford_ppr}
+P.~Lofgren, S.~Banerjee, A.~Goel, ``Personalized PageRank Estimation
+and Search: A Bidirectional Approach,''
+\emph{Proc.\ WSDM}, 2015.
+
+\bibitem{conductance_modularity}
+L.~Gregory, ``Graph Clusterings with Overlaps: Adapted Quality Indices,''
+\emph{ICPRAM}, 2013.
+
+\bibitem{pinecone_mrr}
+Pinecone, ``Mean Reciprocal Rank (MRR),'' Pinecone Learning Center, 2026.
+
+\bibitem{topo_rag}
+Topo-RAG, ``Topology-Aware Retrieval for Hybrid Text-Table Documents,''
+\emph{arXiv:2503.19314}, 2025.
+
+\bibitem{persistence_metric}
+A.~Shestov \emph{et al.}, ``Topological Metric for Unsupervised Embedding
+Quality Evaluation,'' \emph{arXiv:2512.15285}, 2025.
+
+\bibitem{shur2023pagerank}
+D.~Shur, Y.~Huang, and D.\,F.~Gleich,
+``A flexible PageRank-based graph embedding framework closely related to
+spectral eigenvector embeddings,''
+\textit{Journal of Applied and Computational Topology}, vol.~7, pp.~1--38,
+2023.
+\newblock \texttt{doi:10.1007/s41468-023-00129-6}.
+
+\bibitem{chung2010pagerank}
+F.~Chung and W.~Zhao,
+``PageRank and random walks on graphs,''
+in \textit{Fete of Combinatorics and Computer Science}
+(G.\,O.\,H.~Katona, A.~Schrijver, and T.~Sz\H{o}nyi, Eds.),
+Bolyai Society Mathematical Studies, vol.~20,
+Berlin: Springer, 2010, pp.~43--62.
+
+\bibitem{finzi2026epiplexity}
+M.~Finzi \emph{et al.}, ``From Entropy to Epiplexity: Rethinking
+Information for Computationally Bounded Intelligence,''
+\emph{arXiv:2601.03220}, 2026.
+
+\bibitem{Moriondo2025ArrowSpace}
+L.~Moriondo.
+\newblock ArrowSpace: introducing Spectral Indexing for vector search.
+\newblock {\em Journal of Open Source Software}, 10, 2025.
+\newblock doi:10.21105/joss.09002.
+\newblock URL: \url{https://joss.theoj.org/papers/10.21105/joss.09002.pdf}. 
+
+\end{thebibliography}
+
+\end{document}
