@@ -82,7 +82,7 @@ step propagates errors downstream; as noted in recent enterprise analyses,
 ``pure RAG is not really giving the optimal results that were expected''
 \cite{bruckhaus2024rag,ibm2025rag}.  The metrics traditionally used to
 evaluate retrieval---Recall@$k$, Precision@$k$, MRR, NDCG@$k$---operate
-purely on rank positions and relevance labels.  They are \emph{geometry-blind}
+purely on rank positions and relevance labels.  They are \emph{semantics-blind}
 and \emph{topology-blind}: they cannot distinguish a top-$k$ set that forms a
 tight, well-connected cluster on the corpus manifold from one that is
 topologically scattered, even when both sets contain the same relevant items
