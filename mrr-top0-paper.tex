@@ -111,7 +111,7 @@ of graph topology, community structure, or manifold coherence
 \subsection{The Case for Topology-Aware Evaluation}
 
 When a vector database is backed by a graph Laplacian---as in spectral
-search systems such as ArrowSpace \cite{arrowspace2025}---the corpus
+search systems such as ArrowSpace \cite{graphwiring2025}---the corpus
 carries rich structural information: communities, random-walk affinities,
 conductance boundaries, and spectral signatures.  A retrieval metric that
 ignores this structure leaves significant diagnostic power on the table.
@@ -543,10 +543,7 @@ fully spectral MRR-Top0 variant that requires no explicit random-walk
 computation---only the already-indexed $\lambda$ values and the 
 $\tau$-mode search that ArrowSpace provides at query time.
 
-
-\newpage
-% ════════════════════════════════════════════════════════════════════
-\section*{Acknowledgments}
+\section{Conclusion}
 
 MRR-Top0 was developed as part of the ArrowSpace spectral vector database
 project \cite{Moriondo2025ArrowSpace} (\texttt{cargo add arrowspace}, \texttt{pip install arrowspace}).
@@ -559,6 +556,15 @@ proxy provides the operational grounding: even when approximate, $\lambda$
 offers a computationally cheap signal for how much an item deviates from
 learned structure, which is operationally useful for active learning and
 OOD detection in RAG systems. A complete script is available in \href{https://github.com/tuned-org-uk/pyarrowspace/blob/c3d9a40e00a04fa05660f76eb982793e2e80e773/tests/test_15_CVE_pagerank.py}{this repository}.
+
+The integration of MRR-Top0 with the spectral infrastructure of ArrowSpace represents a fundamental advancement in quantifying search quality by grounding retrieval evaluation in the manifold geometry of the data. While traditional metrics like NDCG or classic MRR remain blind to the structural coherence of the result set, MRR-Top0’s topology factor $T_{q,i}$ explicitly rewards items that exhibit high random-walk affinity and community alignment. This transition from purely geometric proximity to topological consistency is made computationally feasible through the extreme compression of the graph Laplacian into ArrowSpace's scalar Rayleigh quotients ($\lambda$). By storing only these spectral signatures rather than the full adjacency matrix, the system reduces the complex global dynamics of a random walk to a series of local, $O(1)$ similarity checks in $\lambda$-space.
+
+This synergy allows for a new class of ``epiplexity-aware'' retrieval systems that can detect out-of-distribution (OOD) drift and measure the structural information content of a query in real-time. Because the PageRank vectors of a graph converge to the eigenvectors of its Laplacian, the $\lambda$ values provided by ArrowSpace serve as a precomputed proxy for an item's stationary position within the manifold's energy landscape. Consequently, the advancement brought by MRR-Top0 is not merely a more sensitive ranking score, but a unified framework where the quality of a search result is intrinsically linked to its ability to preserve the learned structure of the feature space, ensuring robust and stable performance across the long tail of enterprise datasets.
+
+
+\newpage
+% ════════════════════════════════════════════════════════════════════
+\section*{Acknowledgments}
 
  I am grateful to my GitHub Sponsors for their support, which materially enables me to continue this research as an independent researcher. If you would like to support ongoing work on ArrowSpace and related research, please consider sponsoring me at \href{https://github.com/sponsors/tuned-org-uk}{my sponsors page}. Your sponsorship helps fund compute time, open-source maintenance, and the time required to
 develop, test, and communicate these ideas in a transparent and reproducible way.
@@ -578,9 +584,9 @@ IBM, ``RAG Problems Persist. Here Are Five Ways to Fix Them,''
 Weaviate, ``Evaluation Metrics for Search and Recommendation Systems,''
 Weaviate Blog, 2024.
 
-\bibitem{arrowspace2025}
-tuned.org.uk, ``Pathway for Vector DB: Spectral Indexing with Graph
-Laplacians,'' \emph{TechRxiv}, October 2025.
+\bibitem{graphwiring2025}
+Lorenzo Moriondo,  ``Graph Wiring: Eigenstructures for vector datasets and LLM operations.'' TechRxiv. February 27, 2026.
+\emph{DOI: 10.36227/techrxiv.177220780.02840438/v1}
 
 \bibitem{stanford_ppr}
 P.~Lofgren, S.~Banerjee, A.~Goel, ``Personalized PageRank Estimation

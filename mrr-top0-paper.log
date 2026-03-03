@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2026.2.19)  3 MAR 2026 14:21
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2026.2.19)  3 MAR 2026 14:37
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -415,7 +415,7 @@ See the natbib package documentation for explanation.
 Type  H <return>  for immediate help.
  ...                                              
                                                   
-l.74 ...mand\NAT@force@numbers{}\NAT@force@numbers
+l.75 ...mand\NAT@force@numbers{}\NAT@force@numbers
                                                   
 Check the bibliography entries for non-compliant syntax,
 or select author-year BibTeX style, e.g. plainnat
@@ -618,39 +618,31 @@ l.496
       ]
 
 [7]
-Underfull \hbox (badness 1117) in paragraph at lines 582--584
-[]\T1/cmr/m/n/10.95 tuned.org.uk, ``Path-way for Vec-tor DB: Spec-tral In-dex-i
-ng with Graph Lapla-cians,''
- []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 598--600
+[8]
+Underfull \hbox (badness 10000) in paragraph at lines 604--606
 []\T1/cmr/m/n/10.95 Topo-RAG, ``Topology-Aware Re-trieval for Hy-brid Text-Tabl
 e Doc-u-ments,''
  []
 
 
 
-[8] (./mrr-top0-paper.aux)
+[9] (./mrr-top0-paper.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
  ***********
-
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
-
 Package rerunfilecheck Info: File `mrr-top0-paper.out' has not changed.
-(rerunfilecheck)             Checksum: DC69EA3B102DD8F9FC917E6B14BF8527;3487.
+(rerunfilecheck)             Checksum: 7F2FB1DF821622A84C499C8EA279B952;3581.
  ) 
 Here is how much of TeX's memory you used:
- 12593 strings out of 473190
- 190424 string characters out of 5715800
- 608548 words of memory out of 5000000
- 35594 multiletter control sequences out of 15000+600000
+ 12596 strings out of 473190
+ 190454 string characters out of 5715800
+ 608543 words of memory out of 5000000
+ 35595 multiletter control sequences out of 15000+600000
  581075 words of font info for 90 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 75i,13n,79p,551b,617s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 75i,13n,79p,924b,617s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb>
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><
@@ -675,10 +667,10 @@ mf-dist/fonts/type1/public/cm-super/sfrm1095.pfb></usr/local/texlive/2025/texmf
 ist/fonts/type1/public/cm-super/sfti1000.pfb></usr/local/texlive/2025/texmf-dis
 t/fonts/type1/public/cm-super/sfti1095.pfb></usr/local/texlive/2025/texmf-dist/
 fonts/type1/public/cm-super/sftt1095.pfb>
-Output written on mrr-top0-paper.pdf (8 pages, 432536 bytes).
+Output written on mrr-top0-paper.pdf (9 pages, 435440 bytes).
 PDF statistics:
- 324 PDF objects out of 1000 (max. 8388607)
- 262 compressed objects within 3 object streams
- 73 named destinations out of 1000 (max. 500000)
- 137 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 332 PDF objects out of 1000 (max. 8388607)
+ 269 compressed objects within 3 object streams
+ 75 named destinations out of 1000 (max. 500000)
+ 145 words of extra memory for PDF output out of 10000 (max. 10000000)
 
